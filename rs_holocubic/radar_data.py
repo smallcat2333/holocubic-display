@@ -7,6 +7,7 @@ import sqlite3
 import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 from pathlib import Path
@@ -18,7 +19,7 @@ CHINA = timezone(timedelta(hours=8))
 
 
 def read_db(path):
-    """只读打开正在使用的 SQLite，包含 WAL 中的新数据，不执行迁移或写入。"""
+    """只读打开 SQLite 并包含 WAL 新数据；调用方用 closing 释放连接，不执行迁移或写入。"""
     db = sqlite3.connect(Path(path).as_uri() + "?mode=ro", uri=True, timeout=2)
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA query_only=ON")
@@ -102,7 +103,7 @@ def task_counts(state_path, cache_path):
     """最近十个用户主任务各取最新一轮；排除子代理和自动任务，不计工具调用。"""
     cached = load_cache(cache_path)
     warnings, selected, paths = [], [], []
-    with read_db(state_path) as db:
+    with closing(read_db(state_path)) as db:
         rows = db.execute("""SELECT rollout_path FROM threads
             WHERE source IN ('cli','vscode','exec','appServer')
               AND (thread_source IS NULL OR thread_source='user')
@@ -124,7 +125,7 @@ def task_counts(state_path, cache_path):
 def usage_counts(db_path, now):
     """滚动24h内成功 Codex 代理记录，按15分钟分桶；排除会话导入及失败记录。"""
     start = now - 86400
-    with read_db(db_path) as db:
+    with closing(read_db(db_path)) as db:
         rows = db.execute("""SELECT model, CAST((created_at-?)/900 AS INTEGER) AS bucket,
                 COUNT(*) AS n, SUM(input_tokens+output_tokens+cache_read_tokens+cache_creation_tokens=0) AS missing
             FROM proxy_request_logs WHERE app_type='codex' AND data_source='proxy'

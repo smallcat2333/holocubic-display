@@ -3,6 +3,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import Mock, patch
 import radar_data as radar
@@ -42,7 +43,7 @@ class RadarTests(unittest.TestCase):
     def test_ten_tasks_not_ten_turns(self):
         """同一任务多个轮次只计最新一个，子代理与自动任务不混入。"""
         db_path = self.root / "state.sqlite"
-        with sqlite3.connect(db_path) as db:
+        with closing(sqlite3.connect(db_path)) as db, db:
             db.execute("CREATE TABLE threads(rollout_path TEXT,source TEXT,thread_source TEXT,recency_at_ms INTEGER,updated_at_ms INTEGER,updated_at INTEGER)")
             for index in range(12):
                 path = self.root / (str(index) + ".jsonl")
@@ -50,11 +51,16 @@ class RadarTests(unittest.TestCase):
                 db.execute("INSERT INTO threads VALUES(?,?,?,?,?,?)", (str(path), "vscode", "user", index, index, 0))
             db.execute("INSERT INTO threads VALUES(?,?,?,?,?,?)", ("not-read", "vscode", "automation", 100, 100, 0))
             db.execute("INSERT INTO threads VALUES(?,?,?,?,?,?)", ("not-read", "subAgent", "subagent", 100, 100, 0))
-        result, warnings = radar.task_counts(db_path, self.root / "contexts.json")
+        with closing(radar.read_db(db_path)) as connection:
+            with patch.object(radar, "read_db", return_value=connection):
+                result, warnings = radar.task_counts(db_path, self.root / "contexts.json")
+            # 保持连接对象存活，确认函数返回时已释放文件，而不是依赖垃圾回收。
+            with self.assertRaises(sqlite3.ProgrammingError):
+                connection.execute("SELECT 1")
         self.assertEqual(10, result["total"])
         self.assertEqual([{"model": "gpt-6-astra", "effort": "medium", "count": 10}], result["combos"])
         self.assertEqual([], warnings)
-        with radar.read_db(db_path) as db:
+        with closing(radar.read_db(db_path)) as db:
             with self.assertRaises(sqlite3.OperationalError):
                 db.execute("DELETE FROM threads")
 
@@ -62,7 +68,7 @@ class RadarTests(unittest.TestCase):
         """24h边界、应用类型、来源和成功状态都必须满足，按实际记录模型分组。"""
         path = self.root / "usage.sqlite"
         now = 200000
-        with sqlite3.connect(path) as db:
+        with closing(sqlite3.connect(path)) as db, db:
             db.execute("""CREATE TABLE proxy_request_logs(model TEXT,created_at INTEGER,app_type TEXT,data_source TEXT,
                 status_code INTEGER,error_message TEXT,input_tokens INTEGER,output_tokens INTEGER,cache_read_tokens INTEGER,cache_creation_tokens INTEGER)""")
             entries = [("gpt-6-astra", now - 1, "codex", "proxy", 200, None),
@@ -74,7 +80,11 @@ class RadarTests(unittest.TestCase):
                        ("stream-error", now - 1, "codex", "proxy", 200, "failed"),
                        ("future", now + 1, "codex", "proxy", 200, None)]
             db.executemany("INSERT INTO proxy_request_logs VALUES(?,?,?,?,?,?,0,0,0,0)", entries)
-        result = radar.usage_counts(path, now)
+        with closing(radar.read_db(path)) as connection:
+            with patch.object(radar, "read_db", return_value=connection):
+                result = radar.usage_counts(path, now)
+            with self.assertRaises(sqlite3.ProgrammingError):
+                connection.execute("SELECT 1")
         self.assertEqual(2, result["total"])
         self.assertEqual(2, result["missing_usage"])
         self.assertEqual(2, sum(sum(model["bins"]) for model in result["models"]))
