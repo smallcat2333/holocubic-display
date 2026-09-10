@@ -1,0 +1,11 @@
+name = USB Display
+name_zh = USB直连显示
+name_zh_cn = USB直连显示
+name_en = USB Display
+kind = app
+category = tool
+catalog_scope = community
+entry = main.lua
+description = Display PC-rendered frames over USB serial
+description_zh = 通过USB串口显示电脑渲染画面
+version = 0.1.0

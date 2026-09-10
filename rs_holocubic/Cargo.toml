@@ -1,0 +1,19 @@
+[package]
+name = "rs_holocubic"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "USB desktop controller for HoloCubic displays, with local scenes and calendar support."
+repository = "https://github.com/smallcat2333/holocubic-display"
+readme = "README.md"
+
+[dependencies]
+eframe = { version = "0.31.1", default-features = false, features = ["accesskit", "default_fonts", "wgpu"] }
+egui-phosphor = "0.9"
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "bmp", "webp"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[build-dependencies]
+image = { version = "0.25.10", default-features = false, features = ["png", "ico"] }
+winres = "0.1.12"

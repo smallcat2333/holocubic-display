@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="360" viewBox="0 0 1120 360" role="img" aria-labelledby="title description">
+  <title id="title">HoloCubic 工作流程示意</title>
+  <desc id="description">Windows Rust 控制台通过 Python 桥接和 USB 串口控制设备端 Lua 场景，设备本地渲染与计时。</desc>
+  <rect width="1120" height="360" rx="20" fill="#102625"/>
+  <g font-family="Segoe UI, Microsoft YaHei, sans-serif">
+    <text x="48" y="58" fill="#78e6c3" font-size="15" letter-spacing="3">HOLOCUBIC · USB DIRECT</text>
+    <text x="48" y="104" fill="#ffffff" font-size="30" font-weight="600">电脑编辑，屏幕本地运行。</text>
+    <g fill="#193936" stroke="#315b54">
+      <rect x="48" y="148" width="290" height="136" rx="14"/>
+      <rect x="414" y="148" width="290" height="136" rx="14"/>
+      <rect x="780" y="148" width="292" height="136" rx="14"/>
+    </g>
+    <g fill="#ffffff" font-size="22" font-weight="600">
+      <text x="74" y="191">Windows 控制台</text>
+      <text x="440" y="191">Python 通信桥</text>
+      <text x="806" y="191">HoloCubic 屏幕</text>
+    </g>
+    <g fill="#b2d0c7" font-size="16">
+      <text x="74" y="226">Rust / egui · 多模式编辑</text>
+      <text x="74" y="254">草稿、预览与运行状态</text>
+      <text x="440" y="226">JSON 请求 · JPEG 与状态包</text>
+      <text x="440" y="254">USB 串口 · CRC 校验</text>
+      <text x="806" y="226">Lua 场景 · 本地动画</text>
+      <text x="806" y="254">计时、轮播与画面更新</text>
+    </g>
+    <g stroke="#78e6c3" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M354 215 H396 M386 205 L396 215 L386 225"/>
+      <path d="M720 215 H762 M752 205 L762 215 L752 225"/>
+    </g>
+    <text x="48" y="326" fill="#8fb2a7" font-size="14">工作流程示意 · USB 负责更新内容，设备负责本地渲染；首次使用需安装配套 Lua 应用。</text>
+  </g>
+</svg>

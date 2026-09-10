@@ -1,0 +1,6 @@
+[workspace]
+members = ["rs_holocubic"]
+resolver = "3"
+
+[profile.release]
+strip = true

@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+
+# Build outputs, IDE files, private data and migration metadata
+target/
+dist/
+.idea/
+.vscode/
+.migration-backup/
+.codegraph/
+__pycache__/
+*.py[cod]
+*.log
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+auth.json
+credentials*
+holocubic_settings.json
+home_settings.json
+radar_cache/
+/ChatGPT Image*.png

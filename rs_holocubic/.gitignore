@@ -1,0 +1,7 @@
+/target/
+/.idea/
+__pycache__/
+*.pyc
+holocubic_settings.json
+home_settings.json
+radar_cache/
