@@ -7,7 +7,9 @@ mod calendar;
 mod home;
 mod mirror;
 mod model;
+mod protocol;
 mod radar;
+mod usb;
 
 /// 加载构建时生成的透明 PNG，替换 eframe 默认的窗口及任务栏图标。
 fn app_icon() -> eframe::egui::IconData {

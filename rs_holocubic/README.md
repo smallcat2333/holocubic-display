@@ -4,9 +4,13 @@
 
 Rust / egui 原生桌面工具。左侧切换主页、沙漏、文字、图片、AI 雷达和日历。全部通过 USB 控制 ESP32-S3 屏幕；主页支持设备本地轮播。设备不需要互联网，AI 雷达的数据采集需要电脑访问公共雷达网站，日历只读本地 CalendarTask 数据。
 
+## Rust USB（本切片）
+
+`ports` / `status` / `ping`（及 `hello`）已改为进程内 Rust 串口层（`src/protocol.rs` + `src/usb.rs`），不再为此派生 Python。帧格式仍为 `@HCUSB/1 ` + JSON + `\n`，CRC32 为 8 位小写十六进制（对齐 `zlib.crc32`）。任务/文字/图片/主页应用/雷达/日历等写操作仍走现有 Python `bridge.py`；Python 文件暂未删除。
+
 ## 运行
 
-环境：Windows、Rust 1.88+、Python 3.8+。复用上一级目录已经验证过的 `holo_usb_display.py`，Python 需要 `Pillow` 和 `pyserial`。当前不是单 EXE 独立分发包，运行时保留此工程和相邻 Python 文件，`python` 需在 PATH 中。
+环境：Windows、Rust 1.88+、Python 3.8+。复用上一级目录已经验证过的 `holo_usb_display.py`，Python 需要 `Pillow` 和 `pyserial`。当前不是单 EXE 独立分发包：串口枚举与检测连接已用 Rust，其余场景动作仍需相邻 Python 文件与 PATH 中的 `python`（Pillow / pyserial）。
 
 ```powershell
 cargo run
