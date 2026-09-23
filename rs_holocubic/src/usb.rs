@@ -288,7 +288,6 @@ impl HoloCubicUsb {
     }
 
     /// Upload a complete JPEG with ordered chunks and CRC32 validation.
-    #[allow(dead_code)] // used by later slices / available for in-process uploads
     pub fn upload_jpeg(&mut self, data: &[u8], target: &str) -> Result<Value, ProtocolError> {
         if !is_valid_image_target(target) {
             return Err(ProtocolError("不支持的图片目标。".into()));
@@ -466,7 +465,7 @@ pub fn status_result_with_hints(
     device.open()?;
     let mut result = device.hello()?;
     result = match result.get("mode").and_then(Value::as_str) {
-        Some("home") => mirror_home(
+        Some("home") => mirror_home_public(
             &mut device,
             result,
             labels_crc,
@@ -474,8 +473,8 @@ pub fn status_result_with_hints(
             calendar_signature,
             home_crcs,
         )?,
-        Some("radar") => mirror_radar(&mut device, result, radar_crc)?,
-        Some("calendar") => mirror_calendar(&mut device, result, calendar_signature)?,
+        Some("radar") => mirror_radar_public(&mut device, result, radar_crc)?,
+        Some("calendar") => mirror_calendar_public(&mut device, result, calendar_signature)?,
         _ => device.mirror_labels(result, labels_crc, None)?,
     };
     if let Some(obj) = result.as_object_mut() {
@@ -484,7 +483,7 @@ pub fn status_result_with_hints(
     Ok(result)
 }
 
-fn mirror_radar(
+pub(crate) fn mirror_radar_public(
     device: &mut HoloCubicUsb,
     state: Value,
     known_crc: Option<&str>,
@@ -561,7 +560,7 @@ fn mirror_radar(
     Ok(result)
 }
 
-fn mirror_calendar(
+pub(crate) fn mirror_calendar_public(
     device: &mut HoloCubicUsb,
     state: Value,
     known_signature: Option<&str>,
@@ -677,7 +676,7 @@ fn mirror_calendar(
     Ok(final_state)
 }
 
-fn mirror_home(
+pub(crate) fn mirror_home_public(
     device: &mut HoloCubicUsb,
     mut state: Value,
     labels_crc: Option<&str>,
@@ -711,7 +710,7 @@ fn mirror_home(
         let need = radar.get("radar_data").is_none()
             && radar.get("crc32").and_then(Value::as_str) != radar_crc;
         transferred |= need;
-        let mirrored = mirror_radar(device, radar, radar_crc)?;
+        let mirrored = mirror_radar_public(device, radar, radar_crc)?;
         if let Some(obj) = state.as_object_mut() {
             obj.insert("radar".into(), mirrored);
         }
@@ -725,7 +724,7 @@ fn mirror_home(
         let need = calendar.get("calendar_signature").and_then(Value::as_str) != calendar_signature
             && !pages_complete;
         transferred |= need;
-        let mirrored = mirror_calendar(device, calendar, calendar_signature)?;
+        let mirrored = mirror_calendar_public(device, calendar, calendar_signature)?;
         if let Some(obj) = state.as_object_mut() {
             obj.insert("calendar".into(), mirrored);
         }

@@ -538,7 +538,7 @@ impl HoloApp {
         );
     }
 
-    /// 文字模式编辑中文标题、正文和页脚，使用已有 Pillow 渲染路径。
+    /// 文字模式编辑中文标题、正文和页脚，使用进程内 Rust JPEG 渲染。
     fn text_editor(&mut self, ui: &mut egui::Ui) {
         section(ui, "显示内容");
         field(ui, "标题");

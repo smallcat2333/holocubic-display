@@ -2,9 +2,9 @@
 
 # HoloCubic USB 直连显示
 
-桌面控制页见 [rs_holocubic](../rs_holocubic/README.md)：Rust/egui 多模式编辑、任务名称、时长、两位小数沙漏及暂停/继续/重置。
+桌面控制页见 [rs_holocubic](../rs_holocubic/README.md)：纯 Rust/egui 多模式编辑，进程内完成 USB、JPEG 渲染与场景采集；协议前缀仍为 `@HCUSB/1`。
 
-这套 demo 日常只使用 USB，不依赖 Wi-Fi 或互联网。图片模式由 Python 发送 `320×240 JPEG`；沙漏模式只发送额度状态，由设备本地绘图和播放动画。设备端已经通过电脑直连屏幕热点安装完成，无需取出 microSD。
+这套 demo 日常只使用 USB，不依赖 Wi-Fi 或互联网。图片/文字由电脑端 Rust 渲染 `320×240 JPEG` 后上传；沙漏等原生场景只发送状态，由设备本地绘图和播放动画。设备端可通过电脑直连屏幕热点安装，无需取出 microSD。
 
 ## 首次安装设备端
 
@@ -12,90 +12,33 @@
 
 1. 在设备上启用 Wi-Fi，电脑连接本机实测热点 `clocteck_cubic`。
 2. 打开 [DevTools 文件管理](http://192.168.18.1/devtools/)，建立 `/sd/apps/usb_display/`。
-3. 把 `device_app/app.info`、`device_app/main.lua` 和 `device_app/quota_scene.lua` 上传到该目录。
+3. 把 `device_app/` 下的 `app.info`、`main.lua`、`quota_scene.lua`、`radar_scene.lua`、`home_scene.lua`、`calendar_scene.lua` 上传到该目录。
 4. 返回 Launcher，短按 `DOWN` 重扫，启动“USB Display / USB直连显示”。重扫方式见[项目说明](https://github.com/clocteck/holocubic-apps)。
-5. 屏幕出现 `USB DISPLAY / Waiting for Python` 后，电脑可以断开热点，用 USB 发送画面。
+5. 屏幕出现等待 USB 的提示后，电脑可以断开热点，用控制台或 USB 发送画面。
 
 以后开机只需启动该应用，不必重新安装。USB 端口不是 U 盘，不能直接拖入文件。
 
-## Python 环境
+## 运行桌面控制台
 
 ```powershell
-python -m pip install -r requirements.txt
-python holo_usb_display.py ports
-python holo_usb_display.py ping
+cargo run --release --locked -p rs_holocubic
+# 或解压 CI 产物后：
+.\rs_holocubic\rs_holocubic.exe
 ```
 
-本机实测设备为 `COM4` / `303A:1001`，程序按 VID/PID 自动选择，端口号变化不影响使用。
+本机实测设备为 `COM4` / `303A:1001`，程序按 VID/PID 自动选择，端口号变化不影响使用。若设备正常亮屏但电脑找不到串口，检查 VMware 是否接管了 `USB JTAG/serial debug unit`。
 
-若设备正常亮屏但电脑找不到串口，检查 VMware 是否接管了 `USB JTAG/serial debug unit`。应将该设备连接到主机，而不是虚拟机；本次关闭占用它的虚拟机后，COM4 立即恢复。
+在界面中选择端口并“检测连接”，即可发送文字、图片、沙漏、雷达、日历或主页轮播。中文由 Windows 字体（或 Linux 上回退字体）在电脑端渲染，不依赖设备字库。
 
-## 显示文字
-
-```powershell
-python holo_usb_display.py text --title "HoloCubic" --body "USB直连成功" --footer "2026-09-05"
-```
-
-可选参数：`--bg #02070B`、`--fg #F4FBFF`、`--accent #35E7FF`、`--align left|center|right`。中文由 Windows 字体在电脑端渲染，不依赖设备字库。
-
-## 显示图片
-
-```powershell
-python holo_usb_display.py image "C:\path\picture.png"
-```
-
-图片会等比缩放到 `320×240`，不裁剪。清屏：
-
-```powershell
-python holo_usb_display.py clear
-```
-
-## 沙漏动画 Demo
-
-```powershell
-python holo_usb_display.py quota --demo
-```
-
-发送一次状态后，Python 自动退出，设备继续本地动画，不逐帧传图、不反复写卡。界面用原生字体显示 `CODEX`、剩余百分比、`RESET IN` 倒计时和 `COUNT` 计数。
-
-- `DEMO` / `SIMULATED DATA` 明确表示模拟数据：默认从 72% 开始，每秒减少 2 个百分点，归零后补满并循环；未接入真实 Codex 额度。
-- `RESET IN` 是重置倒计时；`COUNT` 是本场景本地累计运行的秒数，不是请求次数或 token 数。
-- 动画定时器间隔为 50ms；倒计时按设备实际经过的秒数计算，不按动画帧数扣减。
-
-使用 Python 指定数值（不自动消耗额度，只运行流沙动效和倒计时）：
-
-```powershell
-python holo_usb_display.py quota --remaining 49 --reset-seconds 7200
-```
-
-剩余百分比范围为 `0～100`，倒计时范围为 `0～604800` 秒。后续再执行同一命令即可更新数值；`clear` 返回等待界面，`text` / `image` 自动停止沙漏动画并切换回图片模式。
-
-## Python 代码调用
-
-```python
-from holo_usb_display import HoloCubicUSB, encode_jpeg, find_holocubic_port, render_text_frame
-
-frame = render_text_frame("HoloCubic", "Python USB 直连")
-with HoloCubicUSB(find_holocubic_port()) as device:
-    device.wait_until_ready()
-    device.upload_jpeg(encode_jpeg(frame))
-```
-
-直接更新沙漏：
-
-```python
-with HoloCubicUSB(find_holocubic_port()) as device:
-    device.wait_until_ready()
-    device.set_quota(remaining=49, reset_seconds=7200, demo=False)
-```
-
-程序在打开串口前将 DTR/RTS 设为未激活，不执行刷机、擦除或主动复位。串口协议使用 8 位十六进制字符串传递 CRC32，避免固件的 32 位浮点数损失校验精度；Python 对完成回执的状态、大小和 CRC32 再次核对。
-
-设备从校验通过的 JPEG 字节加载每帧图像，避免覆盖固定文件名后仍显示缓存中的旧画面。
+程序在打开串口前将 DTR/RTS 设为未激活，不执行刷机、擦除或主动复位。串口协议使用 8 位十六进制字符串传递 CRC32；主机对完成回执的状态、大小和 CRC32 再次核对。JPEG 分块大小为 96 字节。
 
 设备端 API 依据：[clocteck/holocubic-apps](https://github.com/clocteck/holocubic-apps)。
 
 ## 验证与变更
+
+
+2026-09-23 | 0.1.0 | 主机侧改为纯 Rust 单 EXE；移除 Python CLI / bridge；协议与设备 Lua 不变。
+
 
 2026-09-05 | 0.1.0 | 完成热点免拆卡部署，修复 CRC32 有符号整数、浮点精度及图片路径缓存问题，验证断开 Wi-Fi 后的纯 USB 连续刷新。
 

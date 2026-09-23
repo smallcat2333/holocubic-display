@@ -7,9 +7,6 @@
 使用 Windows 10/11 x64、Rust stable 和 MSVC C++ 构建工具，在仓库根目录执行：
 
 ```powershell
-python -m pip install -r requirements.txt
-python -m unittest -v test_holo_usb_display.py
-python -m unittest discover -s rs_holocubic -p "test_*.py"
 cargo test --locked
 cargo build --release --locked
 ```

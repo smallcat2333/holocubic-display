@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="360" viewBox="0 0 1120 360" role="img" aria-labelledby="title description">
   <title id="title">HoloCubic 工作流程示意</title>
-  <desc id="description">Windows Rust 控制台通过 Python 桥接和 USB 串口控制设备端 Lua 场景，设备本地渲染与计时。</desc>
+  <desc id="description">Windows Rust 控制台通过 USB 串口控制设备端 Lua 场景，设备本地渲染与计时。</desc>
   <rect width="1120" height="360" rx="20" fill="#102625"/>
   <g font-family="Segoe UI, Microsoft YaHei, sans-serif">
     <text x="48" y="58" fill="#78e6c3" font-size="15" letter-spacing="3">HOLOCUBIC · USB DIRECT</text>
@@ -12,7 +12,7 @@
     </g>
     <g fill="#ffffff" font-size="22" font-weight="600">
       <text x="74" y="191">Windows 控制台</text>
-      <text x="440" y="191">Python 通信桥</text>
+      <text x="440" y="191">Rust USB 层</text>
       <text x="806" y="191">HoloCubic 屏幕</text>
     </g>
     <g fill="#b2d0c7" font-size="16">
