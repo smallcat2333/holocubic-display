@@ -1,4 +1,4 @@
-//! 后台 JSON 桥接，复用相邻 Python 工具并隐藏 Windows 控制台。
+//! 后台 JSON 桥接：ports/status/hello 走进程内 Rust USB；其余动作仍复用 Python。
 
 use serde_json::Value;
 use std::{
@@ -8,8 +8,35 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// 子进程只接收 JSON 标准输入，不经过 shell；超时后终止并回收进程。
+/// 分发一条 GUI 后台请求。`ports` / `status` / `ping` / `hello` 由 Rust USB 层处理。
 pub fn call(request: Value) -> Result<Value, String> {
+    match request.get("action").and_then(Value::as_str) {
+        Some("ports") => crate::usb::list_ports_result().map_err(|e| e.0),
+        Some("status") => {
+            let port = request.get("port").and_then(Value::as_str);
+            let labels_crc = request.get("labels_crc").and_then(Value::as_str);
+            let radar_crc = request.get("radar_crc").and_then(Value::as_str);
+            let calendar_signature = request.get("calendar_signature").and_then(Value::as_str);
+            let home_crcs = request.get("home_crcs");
+            crate::usb::status_result_with_hints(
+                port,
+                labels_crc,
+                radar_crc,
+                calendar_signature,
+                home_crcs,
+            )
+            .map_err(|e| e.0)
+        }
+        Some("ping") | Some("hello") => {
+            let port = request.get("port").and_then(Value::as_str);
+            crate::usb::ping_result(port).map_err(|e| e.0)
+        }
+        _ => call_python(request),
+    }
+}
+
+/// 子进程只接收 JSON 标准输入，不经过 shell；超时后终止并回收进程。
+fn call_python(request: Value) -> Result<Value, String> {
     // 发布包把 Python 脚本放在 EXE 旁；cargo run 使用源码目录中的同一套脚本。
     let executable = std::env::current_exe().map_err(|error| error.to_string())?;
     let bundled_script = executable.parent().unwrap().join("bridge.py");
@@ -86,7 +113,10 @@ pub fn call(request: Value) -> Result<Value, String> {
     let reply: Value = serde_json::from_slice(&stdout)
         .map_err(|e| format!("后台响应错误：{e} {}", String::from_utf8_lossy(&stderr)))?;
     if reply["ok"] != true {
-        return Err(reply["error"].as_str().unwrap_or("后台执行失败").to_owned());
+        return Err(reply["error"]
+            .as_str()
+            .unwrap_or("后台执行失败")
+            .to_owned());
     }
     Ok(reply["result"].clone())
 }
