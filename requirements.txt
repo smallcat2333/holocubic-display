@@ -1,2 +1,1 @@
-Pillow==10.2.0
-pyserial==3.5
+# Runtime no longer uses Python. Kept so legacy CI steps that install this file stay green.

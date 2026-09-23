@@ -1,14 +1,18 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 //! HoloCubic 原生桌面控制器入口。
 
+mod actions;
 mod app;
 mod bridge;
 mod calendar;
+mod calendar_data;
 mod home;
 mod mirror;
 mod model;
 mod protocol;
+mod render;
 mod radar;
+mod radar_data;
 mod usb;
 
 /// 加载构建时生成的透明 PNG，替换 eframe 默认的窗口及任务栏图标。

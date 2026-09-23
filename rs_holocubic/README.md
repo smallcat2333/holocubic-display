@@ -1,16 +1,17 @@
-> 独立仓库的构建和下载入口见 [根目录 README](../README.md)。下面保留模式说明与历史验收；当前 workspace 构建产物位于仓库根目录 `target/`。发布包已支持从 EXE 旁加载桥接脚本，需完整解压。
+> 独立仓库的构建和下载入口见 [根目录 README](../README.md)。当前为纯 Rust 单 EXE：USB、场景、采集与 JPEG 渲染均在进程内完成，不派生 Python。构建产物位于仓库根目录 `target/`。
 
 # HoloCubic 控制台
 
 Rust / egui 原生桌面工具。左侧切换主页、沙漏、文字、图片、AI 雷达和日历。全部通过 USB 控制 ESP32-S3 屏幕；主页支持设备本地轮播。设备不需要互联网，AI 雷达的数据采集需要电脑访问公共雷达网站，日历只读本地 CalendarTask 数据。
 
-## Rust USB（本切片）
+## Rust USB
 
-`ports` / `status` / `ping`（及 `hello`）已改为进程内 Rust 串口层（`src/protocol.rs` + `src/usb.rs`），不再为此派生 Python。帧格式仍为 `@HCUSB/1 ` + JSON + `\n`，CRC32 为 8 位小写十六进制（对齐 `zlib.crc32`）。任务/文字/图片/主页应用/雷达/日历等写操作仍走现有 Python `bridge.py`；Python 文件暂未删除。
+全部 GUI 后台动作（ports/status/hello、clear/text/image/task、雷达、日历、主页）走进程内 `protocol.rs` + `usb.rs` + `actions.rs` + `render.rs`。帧格式仍为 `@HCUSB/1 ` + JSON + `
+`，CRC32 为 8 位小写十六进制。
 
 ## 运行
 
-环境：Windows、Rust 1.88+、Python 3.8+。复用上一级目录已经验证过的 `holo_usb_display.py`，Python 需要 `Pillow` 和 `pyserial`。当前不是单 EXE 独立分发包：串口枚举与检测连接已用 Rust，其余场景动作仍需相邻 Python 文件与 PATH 中的 `python`（Pillow / pyserial）。
+环境：Windows、Rust 1.88+。单 EXE 分发，不需要 Python / Pillow / pyserial。
 
 ```powershell
 cargo run
@@ -18,7 +19,7 @@ cargo run
 cargo build --release
 ```
 
-启动后选择 COM4 或自动识别，点击“检测连接”。本版本需将上级 `device_app/` 的 `main.lua`、`quota_scene.lua`、`radar_scene.lua`、`home_scene.lua`、`calendar_scene.lua` 上传到设备 `/sd/apps/usb_display/`，然后重启 USB Display 应用；使用已验证的热点 DevTools 安装流程，不刷写 Flash。
+启动后选择 COM 口或自动识别，点击“检测连接”。需将上级 `device_app/` 的 Lua 上传到设备 `/sd/apps/usb_display/`，然后重启 USB Display 应用。
 
 ## 模式
 
@@ -28,7 +29,7 @@ cargo build --release
 - **手动百分比**：沙量保持指定值，倒计时独立运行。
 - **循环**：默认不勾选；勾选并点击“应用并开始”后，每轮结束立即恢复设定时长及初始百分比，累计秒数从零开始。暂停会同时暂停循环，重置从新一轮开始；不勾选则结束后停止。两端各自处理循环，不增加 USB 查询或图片传输。
 - **应用并开始**：上传本次任务的静态中文标签并开始新任务。暂停、继续和重置发送小型状态命令；停止返回等待界面。
-- **文字**：中文标题、正文、底部说明、强调色，复用 Pillow 渲染后发送 JPEG。
+- **文字**：中文标题、正文、底部说明、强调色，由 Rust 渲染后发送 JPEG。
 - **图片**：选择本地 PNG/JPEG/BMP/WebP，等比适配到 320×240；可独立加载预览。
 
 沙漏右侧为“任务运行画面”：启动、暂停、继续、重置或手动检测时读取一次设备状态，之后电脑与 ESP32 按同一份任务参数分别计算百分比、倒计时、累计秒数及动画。标题和说明仍使用设备确认的 JPEG 字节，不从未发送的编辑草稿猜测。修改草稿后，点击“应用并开始”且收到设备确认才切换任务。
@@ -42,7 +43,7 @@ cargo build --release
 ## 数据与边界
 
 - 内容草稿通过“保存配置”写入 EXE 同目录的 `holocubic_settings.json`；主页勾选和时长每次变化后自动写入同目录 `home_settings.json`，下次启动恢复，无需手动保存。保存失败会在主页提示；不保存账号凭据。
-- USB 工作在线程中串行执行，Python 子进程隐藏控制台；失败提示保留编辑内容，不会自动刷机或复位。
+- USB 工作在线程中串行执行；失败提示保留编辑内容，不会自动刷机或复位。
 - 中文标签通过一张稀疏 JPEG 在应用任务时上传一次；后续动画由 LVGL 本地完成，不逐帧传图、不持续写卡。
 - 沙漏背景为纯黑 `#000000`，设备容器、中文标签背景和桌面画面一致，适合棱镜透明显示。
 - 设备提供 `mirror_protocol=1`，任务状态包含 `initial_bp` 和 `timed`，中途接入不从已四舍五入的百分比反推原始值。标签仅在首次连接或 CRC 改变时按 192 字节分块回读，CRC32 校验失败不会显示假预览。切换串口会清空旧画面缓存。
@@ -67,18 +68,13 @@ cargo build --release
 
 当前[官方 Lua 接口文档](https://github.com/clocteck/holocubic-apps/blob/main/README_LUA.md)只公开 IMU 的 roll/pitch 姿态事件，gx/gy/gz 为预留值，通常为0；未公开单拍/双拍事件或原始加速度读取。本版本不启用拍击识别，也不把晃动近似当成拍击重置任务。可靠接入“单拍暂停/继续、双拍重置”需要固件进一步开放拍击或传感器数据；这不等同于认定硬件没有传感器。
 
-测试：`python -X utf8 -m unittest -v test_home_bridge.py`、`lua test_home_scene.lua`、`cargo test --offline`；上级目录运行 `python -X utf8 -m unittest -v test_holo_usb_display.py` 验证分块回执和半行接收。
+测试：`lua test_home_scene.lua`、`cargo test --locked`。
 
 ## 验证
 
 ```powershell
-cargo test
-cargo clippy --all-targets -- -D warnings
-# 可选真机只读验证：COM4 正在运行沙漏；间隔 3 秒仅采样两次
-cargo test usb_clock_advances_without_intermediate_queries -- --ignored --nocapture
-python -m unittest -v test_bridge.py
-# 上一级目录
-python -m unittest -v test_holo_usb_display.py
+cargo test --locked
+cargo build --release --locked
 ```
 
 截图验收可运行 `target/debug/rs_holocubic.exe --screenshot <绝对路径.png>`，或加 `--small` 检查 860×640 窗口；截图模式会只读连接 USB，抓取真实状态驱动的窗口画面，随后自动关闭。测试前关闭其他占用串口的控制台。
@@ -98,7 +94,7 @@ python -m unittest -v test_holo_usb_display.py
 - 页面策略：正文14像素、行高18像素、条目间隔6像素；按用户要求只显示第一页，不建立自动翻页定时器。超出首页容量时页脚提示“还有内容”，控制台左侧仍显示完整清单。
 - USB 策略：在非活动 A/B 槽上传首页，CRC校验完成才原子替换；未上传完整的新内容不会覆盖旧画面。预览回读实际页面，按签名复用缓存。
 
-测试：`python -X utf8 -m unittest -v test_calendar.py`、`lua test_calendar_scene.lua`、`cargo test --offline`。数据筛选与只读测试使用临时数据库，删除线通过图像像素断言验证，不修改真实任务来制造测试结果。
+测试：`lua test_calendar_scene.lua`、`cargo test --locked`。日历采集与渲染由 Rust 单测覆盖。
 
 ## AI 雷达
 
@@ -125,9 +121,9 @@ python -m unittest -v test_holo_usb_display.py
 - 设备本地 400ms 微动画，稳定后仅每秒更新年龄和倒计时；公开数据失败时显示 `SOURCE WARN`，缺失计数/分数不显示成零。预计窗口结束只提示查看确认，不声明已经重置。
 - **真实预览**：发送成功直接复用已确认快照；手动检测时通过 `radar_read` 分块回读设备 RAM，并验证 CRC。CRC 相同则复用缓存。回执的 `scene_seconds` 和 `age` 校准轮播/倒计时，之后两端独立运行，不增加周期性状态查询。未回读时留空；本机新采集不能覆盖设备预览；切换串口清除旧设备缓存。
 
-附加测试：`python -X utf8 -m unittest -v test_radar_usb.py`；安装 Lua 5.3+ 后，在本目录运行 `lua test_radar_scene.lua` 验证设备场景状态与对象生命周期（模拟测试不等同真机像素验收）。
+附加测试：安装 Lua 5.3+ 后运行 `lua test_radar_scene.lua`；Rust 侧 `radar_data` / USB 单测见 `cargo test --locked`。
 
-验证命令：`python -m unittest -v test_radar_data.py test_bridge.py test_radar_usb.py`、`cargo test --offline`、`cargo clippy --offline --all-targets -- -D warnings`。使用 `--radar --screenshot <绝对路径.png>` 会只读连接 USB、回读设备实际雷达画面并截图；不会应用待发数据或启动持续同步。
+验证命令：`cargo test --locked`、`cargo clippy --all-targets -- -D warnings`。使用 `--radar --screenshot <绝对路径.png>` 会只读连接 USB、回读设备实际雷达画面并截图；不会应用待发数据或启动持续同步。
 
 ## 应用图标
 
@@ -180,3 +176,6 @@ python -m unittest -v test_holo_usb_display.py
 
 
 2026-09-10 | 0.1.0 | 迁移到独立仓库，保留模式实现，补充便携包脚本定位和根目录构建入口。
+
+
+2026-09-23 | 0.1.0 | 纯 Rust 迁移完成：移除 Python 桥接，单 EXE 打包；中文 JPEG 使用系统字体（Windows 优先微软雅黑，Linux CI 回退 Noto Sans CJK / Montserrat）。

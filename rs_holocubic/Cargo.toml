@@ -16,6 +16,15 @@ serde_json = "1"
 serialport = "4.7"
 crc32fast = "1.4"
 base64 = "0.22"
+ab_glyph = "0.2.32"
+rfd = "0.15"
+rusqlite = { version = "0.32", features = ["bundled"] }
+ureq = { version = "2.12", features = ["json", "gzip"] }
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
+regex = "1"
+html-escape = "0.2"
+chrono = "0.4"
 
 [build-dependencies]
 image = { version = "0.25.10", default-features = false, features = ["png", "ico"] }
